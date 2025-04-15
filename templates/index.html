@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线矩阵计算器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script>
+        function createMatrixInputs() {
+            const rows = parseInt(document.querySelector('input[name="rows"]').value);
+            const cols = parseInt(document.querySelector('input[name="cols"]').value);
+            const matrixInput = document.getElementById('matrixInput');
+            matrixInput.innerHTML = '';
+            for (let i = 0; i < rows; i++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.classList.add('flex', 'space-x-2', 'mb-2');
+                for (let j = 0; j < cols; j++) {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = `matrix[${i}][${j}]`;
+                    input.value = '0';
+                    input.classList.add('border', 'border-gray-300', 'p-2', 'rounded', 'w-12');
+                    rowDiv.appendChild(input);
+                }
+                matrixInput.appendChild(rowDiv);
+            }
+        }
+
+        function validateInput() {
+            const rows = parseInt(document.querySelector('input[name="rows"]').value);
+            const cols = parseInt(document.querySelector('input[name="cols"]').value);
+            if (isNaN(rows) || rows <= 0 || isNaN(cols) || cols <= 0) {
+                alert('行数和列数必须为正整数！');
+                return false;
+            }
+            return true;
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100 p-8 font-sans">
+    <div class="container mx-auto bg-white p-8 rounded shadow-md max-w-3xl">
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">在线矩阵计算器</h1>
+        {% if error %}
+        <div class="text-red-500 mb-4 text-center">{{ error }}</div>
+        {% endif %}
+        <form id="matrixForm" method="post" onsubmit="return validateInput();" class="flex flex-col space-y-6">
+            <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8 justify-center">
+                <div class="flex items-center">
+                    <label for="rows" class="text-gray-700 font-medium mr-2">行数(m):</label>
+                    <input type="number" id="rows" name="rows" min="1" value="{{ request.form.rows or 2 }}" required
+                        class="border border-gray-300 p-2 rounded w-20 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex items-center">
+                    <label for="cols" class="text-gray-700 font-medium mr-2">列数(n):</label>
+                    <input type="number" id="cols" name="cols" min="1" value="{{ request.form.cols or 2 }}" required
+                        class="border border-gray-300 p-2 rounded w-20 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="button" onclick="createMatrixInputs()"
+                    class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                    <i class="fa-solid fa-table-cells mr-2"></i> 生成矩阵输入
+                </button>
+            </div>
+
+            <div id="matrixInput" class="flex flex-col space-y-2"></div>
+
+            <button type="submit"
+                class="bg-green-500 text-white p-2 rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75">
+                <i class="fa-solid fa-calculator mr-2"></i> 计算
+            </button>
+        </form>
+
+        {% if results %}
+        <div class="mt-8">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">
+                <i class="fa-solid fa-calculator mr-2"></i> 计算结果
+            </h2>
+            <div class="bg-gray-100 p-4 rounded">
+                <p class="mb-2"><i class="fa-solid fa-matrix mr-2"></i><strong>原矩阵:</strong> \({{ results.original }}\)</p>
+                <p class="mb-2"><i class="fa-solid fa-ranking-star mr-2"></i><strong>秩:</strong> {{ results.rank }}</p>
+                <p class="mb-2"><i class="fa-solid fa-square mr-2"></i><strong>是否为方阵:</strong> {{ results.is_square }}</p>
+                {% if results.is_square %}
+                <p class="mb-2"><i class="fa-solid fa-calculator mr-2"></i><strong>行列式:</strong> \({{ results.det }}\)</p>
+                <p class="mb-2"><i class="fa-solid fa-polynomial mr-2"></i><strong>特征多项式:</strong> \({{ results.charpoly }}\)</p>
+                {% if results.eigen_error %}
+                <p class="text-red-500 mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i><strong>特征值和特征向量计算错误:</strong> {{ results.eigen_error }}</p>
+                {% else %}
+                <p class="mb-2"><i class="fa-solid fa-vector-square mr-2"></i><strong>特征值和特征向量:</strong></p>
+                <ul class="list-disc pl-6 mb-4">
+                    {% for eigen in results.eigen %}
+                    <li><i class="fa-solid fa-circle-dot mr-1"></i>特征值: \({{ eigen.value }}\) (重数: {{ eigen.multiplicity }})
+                        <ul class="list-circle pl-6">
+                            {% for vector in eigen.vectors %}
+                            <li><i class="fa-solid fa-arrow-right mr-1"></i>特征向量: \({{ vector }}\)</li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% if results.inv_error %}
+                <p class="text-red-500 mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i><strong>逆矩阵计算错误:</strong> {{ results.inv_error }}</p>
+                {% else %}
+                <p class="mb-2"><i class="fa-solid fa-inverse mr-2"></i><strong>逆矩阵:</strong> \({{ results.inv }}\)</p>
+                {% endif %}
+                {% if results.spectral_error %}
+                <p class="text-red-500 mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i><strong>谱分解计算错误:</strong> {{ results.spectral_error }}</p>
+                {% else %}
+                <p class="mb-2"><i class="fa-solid fa-split mr-2"></i><strong>谱分解 P:</strong> \({{ results.spectral_P }}\)</p>
+                <p class="mb-2"><i class="fa-solid fa-split mr-2"></i><strong>谱分解 D:</strong> \({{ results.spectral_D }}\)</p>
+                {% endif %}
+                {% if results.LU_error %}
+                <p class="text-red-500 mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i><strong>LU 分解计算错误:</strong> {{ results.LU_error }}</p>
+                {% else %}
+                <p class="mb-2"><i class="fa-solid fa-layer-group mr-2"></i><strong>LU 分解 L:</strong> \({{ results.LU_L }}\)</p>
+                <p class="mb-2"><i class="fa-solid fa-layer-group mr-2"></i><strong>LU 分解 U:</strong> \({{ results.LU_U }}\)</p>
+                {% endif %}
+                {% endif %}
+                <p><i class="fa-solid fa-grip-lines mr-2"></i><strong>行最简形:</strong> \({{ results.rref }}\)</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+
+</html>
+    
